@@ -1,4 +1,4 @@
-# Embeded
+# Embedded
 嵌入式学习
 
 ## 目录 Index
