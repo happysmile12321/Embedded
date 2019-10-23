@@ -362,11 +362,55 @@ return 0;
 
 ![1571617743862](images/1571617743862.png)
 
+## fcntl()
+
+> fcntl()是一个非常通用的函数，它可以对已打开的文件描述符进行各种操作，不仅包括管理文件锁，还包括获得或设置文件描述符和文件描述符标志、文件描述符的复制等很多功能。这里主要介绍建立记录锁的方法。
+
+---
+
+> 所需头文件
+
+```c
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+```
+
+> 函数原型
+
+```c
+int fcnt1(int fd, int cmd, struct flock *lock)
+```
+
+> 函数传入值
+
+```c
+fd
+    文件描述符
+```
+
+```c
+cmd
+    命令
+    F_DUPFD：复制文件描述符
+    F_GETFD：获得fd的close-on-exec 标志，若标志未设置，则文件经过exec()函数之后仍保持打开状态
+    F_GETFL：得到open设置的标志
+    F_SETFL：改变open设置的标志
+    F_GETLK：获取当前的文件锁状态，存放在lock中
+    F_SETLK：根据lock参数值，设置文件锁
+    F_SETLKW：F_SETLK 的阻塞版本（命令名中的W 表示等待（wait））。在无法获取锁时，会进入睡眠状态；如果	可以获取锁或者捕捉到信号则会返回
+    
+```
 
 
 
 
 
+
+
+
+
+---
 
 ## errno code中文版
 
