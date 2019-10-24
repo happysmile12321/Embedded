@@ -398,17 +398,233 @@ cmd
     F_SETFL：改变open设置的标志
     F_GETLK：获取当前的文件锁状态，存放在lock中
     F_SETLK：根据lock参数值，设置文件锁
-    F_SETLKW：F_SETLK 的阻塞版本（命令名中的W 表示等待（wait））。在无法获取锁时，会进入睡眠状态；如果	可以获取锁或者捕捉到信号则会返回
-    
+    F_SETLKW：F_SETLK 的阻塞版本（命令名中的W 表示等待（wait））。在无法获取锁时，会进入睡眠状态；如果可以获取锁或者捕捉到信号则会返回
+```
+
+```c
+lock
+    结构为flock，设置记录锁的具体状态
+```
+
+```c
+struct flock
+{
+short l_type;
+off_t l_start;
+short l_whence;
+off_t l_len;
+pid_t l_pid;
+}
+//
+l_type
+    F_RDLCK：读取锁（共享锁）
+    F_WRLCK：写入锁（排斥锁）
+    F_UNLCK：解锁
+l_start
+    相对位移量（字节）
+l_whence：相对位移量的起点（同lseek的whence）
+    SEEK_SET：当前位置为文件的开头。
+    SEEK_CUR：当前位置为文件指针的位置。
+    SEEK_END：当前位置为文件的结尾。
+l_len
+    加锁区域的长度
+//
+为整个文件加锁，通常的方法是将l_start设置为0，l_whence设置为SEEK_SET，l_len设置为0。
+//l_whence+l_start确定文件指针具体位置，l_len确定加锁长度
 ```
 
 
+> 为整个文件加锁，通常的方法是将l_start设置为0，l_whence设置为SEEK_SET，l_len设置为0。
 
+> 函数返回值
 
+```c
+0：成功
+-1：出错
+```
 
+---
 
+> 接下来，lock_set.c&write_lock.c都是定义了一个函数，而在fcntl_read.c中调用了他们。
 
+```
+下面首先给出了使用fcntl()函数的文件记录锁功能的代码实现。在该代码中，首先给flock结构体的对应位赋予相应的初值，接着使用两次fcntl()函数，分别用于判断文件是否可以上锁和给相关文件上锁，这里用到的cmd值分别为F_GETLK 和F_SETLK（或F_SETLKW）。
+用F_GETLK 命令判断是否可以进行flock结构所描述的锁操作：
+若可以进行，则flock结构的l_type会被设置为F_UNLCK，其他域不变；若不可行，则l_pid被设置为拥有文件锁的进程号，其他域不变。
+用F_SETLK 和F_SETLKW 命令设置flock 结构所描述的锁操作，后者是前者的阻塞版。
+```
 
+### lock_set.c
+
+```c
+/* lock_set.c */
+int lock_set(int fd, int type)
+{
+struct flock lock;
+lock.l_whence = SEEK_SET;
+lock.l_start = 0;
+lock.l_len = 0;
+lock.l_type = type; //初始化l_type，这一步也可以给它赋值NULL
+lock.l_pid = -1;    //初始化l_pid
+/* 判断文件是否可以上锁*/
+fcntl(fd, F_GETLK, &lock);
+if (lock.l_type != F_UNLCK)
+{
+/* 判断文件不能上锁的原因*/
+if (lock.l_type == F_RDLCK) /* 该文件已有读取锁*/
+{
+printf("Read lock already set by %d\n", lock.l_pid);
+}
+else if (lock.l_type == F_WRLCK) /* 该文件已有写入锁*/
+{
+printf("Write lock already set by %d\n", lock.l_pid);
+}
+}
+/* F_GETLK获取的是文件fd的原始锁定状态，并将这个状态记录在lock结构体中，这个值和初始化的lock.l_type没有关系。因为lock_set()函数的第二个参数要求给文件fd添加type类型的锁，所以这里需要再次给lock.l_type赋值为type，以便后面调用fcntl函数时，可通过F_SETLKW或者F_SETLK将lock.l_type的设定值赋给文件fd，为文件fd加上符合要求的锁*/
+/*因为使用F_GETLK获取文件锁状态后，可能把l_type修改为UNLCK，所以必须重新设置。*/
+lock.l_type = type;
+    
+/* 根据不同的type 值进行阻塞式上锁或解锁*/
+/* 设置维持阻塞，等待文件锁解除后再继续操作。*/
+if ((fcntl(fd, F_SETLKW, &lock)) < 0)
+{
+printf("Lock failed:type = %d\n", lock.l_type);
+return 1;
+}
+switch(lock.l_type)
+{
+case F_RDLCK:
+{
+printf("Read lock set by %d\n", getpid());
+}
+break;
+case F_WRLCK:
+{
+printf("Write lock set by %d\n", getpid());
+}
+break;
+case F_UNLCK:
+{
+printf("Release lock by %d\n", getpid());
+return 1;
+}
+break;
+default:
+break;
+}/* end of switch */
+return 0;
+}
+```
+
+### write_lock.c
+
+```c
+/* write_lock.c */
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include "lock_set.c"
+int main(void)
+{
+int fd;
+/* 首先打开文件*/
+fd = open("hello",O_RDWR | O_CREAT, 0644);
+if(fd< 0)
+{
+printf("Open file error\n");
+exit(1);
+}
+/* 给文件上写入锁*/
+lock_set(fd, F_WRLCK);
+getchar();
+/* 给文件解锁*/
+lock_set(fd, F_UNLCK);
+getchar();
+close(fd);
+exit(0);
+}
+```
+
+---
+
+运行write_lock.c
+
+![1571878855331](images/1571878855331.png)
+
+​	叠在上面的终端先运行./a.out，然后另一个也运行./a.out，发现会提示这个文件已经被3166加上写锁。（写锁是互斥锁）所以在写锁没被释放之前，这个文件处于不可编辑状态。
+
+​	然后再在上面终端按一下Enter键，这个终端就会释放写锁，打印&退出。下面的终端就会立刻给这个文件加上写锁。
+
+---
+
+> 下面这段代码，可以这样验证。
+>
+> 读锁已经加的情况下，写锁是不能加的。
+>
+> 但可以加多个读锁。
+
+### fcntl_read.c
+
+```c
+/* fcntl_read.c */
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include "lock_set.c"
+int main(void)
+{
+int fd;
+fd = open("hello",O_RDWR | O_CREAT, 0644);
+if(fd< 0)
+{
+printf("Open file error\n");
+exit(1);
+}
+/* 给文件上读取锁*/
+lock_set(fd, F_RDLCK);
+getchar();
+/* 给文件解锁*/
+lock_set(fd, F_UNLCK);
+getchar();
+close(fd);
+exit(0);
+}
+```
+
+![image-20191024104013952](images/image-20191024104013952.png)
+
+> 可以看到，读锁已经加的情况下，再加写锁就会提示读锁已经加上了。
+>
+> 在加读锁，可以看到pid是不一样的。因此可以加多个读锁。
+>
+> 而要想让写锁加上，必须把两个读锁都解锁，然后写锁才可以加上。
+
+### 强制性锁
+
+```
+#重新挂载根分区，并增加mand选项
+mount  -o  remount,mand  /	
+#给文件hello添加setgid权限
+chmod  g+s  hello				
+#给文件hello去掉组群的可执行权
+chmod  g-x  hello				
+```
+
+> 先给文件加上写锁。
+>
+> 如果这个时候再对hello进行vim操作，会出现大片的空白。hello原本是有内容的。
+
+![image-20191024105946559](images/image-20191024105946559.png)
+
+> 写锁一停掉，发现vim又可以读取到对应的内容
+
+![image-20191024110101065](images/image-20191024110101065.png)
 
 ---
 
