@@ -18,8 +18,10 @@
   - select()函数
   - 宏定义的意思
   - poll()函数
-- 04 linux进程控制(第二大部分)&PCB
-- 04 code linux进程控制编程
+- 04 linux进程控制(第二大部分)&PCB&linux进程管理&前后台进程手工管理&调度启动
+- 04 code linux进程控制编程&fork()&vfork()&exec函数族&exit和_exit函数&wait和waitpid函数
+- 05 linux进程控制2&守护进程(Daemon)&终端&编写守护进程
+  - 因为内容比较少，因此这一讲不出code，code包含在这里面
 
 ## 环境说明
 
