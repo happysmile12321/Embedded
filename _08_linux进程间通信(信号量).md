@@ -52,4 +52,51 @@ V()
 > 最简单的，s的值只取0或1,叫做2维信号量。
 - s=0,可以表示信号的互斥。
 
+### 生产者消费者问题
+
+> In our processes,there would be two guy.--producer,consumer.
+> Each time,producer produce "data" to buffer;
+> 	  consumer consume "data" from buffer.
+> So they will share [buffer].
+
+-		----------		-
+[producer] -- 	- BUFFER -  -- 		[consumer]
+-		----------		-
+```
+In this situation,4 tips for you:
+	1.Each time put  one "data"
+	2.Each time take one "data"
+	3.BUFFER full,  then stop put.
+	4.BUFFER empty, then stop take.
+```
+
+```c
+producer()
+{
+while(1)
+{
+	produce "data";
+	P(empty);
+	P(mutex);
+	put "data" to buffer;
+	V(mutex);
+	V(full);
+}
+}
+consumer()
+{
+while(1)
+{
+	consume"data";
+	P(full);
+	P(mutex);
+	take "data" from buffer;
+	V(mutex);
+	V(empty);
+}
+}
+```
+
+
+
 
