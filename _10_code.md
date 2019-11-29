@@ -1,8 +1,32 @@
 ## 函数说明
 
-> 消息队列的应用包括创建或打开消息队列、添加消息、读取消息和控制消息队列这4 种操作。其中创建或打开消息队列使用的函数是msgget()，这里创建的消息队列的数量会受到系统消息队列数量的限制；添加消息使用的函数是msgsnd()函数，它把消息添加到已打开的消息队列末尾；读取消息使用的函数是msgrcv()，它把消息从消息队列中取走，与FIFO 不同的是，这里可以指定取走某一条消息；最后控制消息队列使用的函数是msgctl()，它可以完成多项功能。
+> 消息队列就是信箱
+
+> 消息队列的应用包括创建或打开消息队列、添加消息、读取消息和控制消息队列这4 种操作。
+
+> 其中创建或打开消息队列使用的函数是msgget()，这里创建的消息队列的数量会受到系统消息队列数量的限制；
+>
+> 添加消息使用的函数是msgsnd()函数，它把消息添加到已打开的消息队列末尾；
+>
+> 读取消息使用的函数是msgrcv()，它把消息从消息队列中取走，
+>
+> 与FIFO 不同的是，这里可以指定取走某一条消息；
+>
+> 最后控制消息队列使用的函数是msgctl()，它可以完成多项功能。
 
 ### msgget()
+
+> msgget()函数可以用来判断消息队列是否存在。此时，仅仅用IPC_EXCL参数。
+>
+> `msgget(key,IPC_EXCL)`,不存在--返回<0。
+
+> msgget()函数可以用来打开已经存在的消息队列。此时，需要制定打开的权限。
+>
+> `msgget(key,0600)`，此时如果一个没有权限的用户来打开，就会报文件描述符错误的提示。
+
+> msgget()函数可以使用`IPC_CREAT`&`IPC_EXCL`拼接判断。
+>
+> `msgget(key,IPC_CREAT|IPC_EXCL)`，如果创建的是不存在的消息队列，则不会出错。否则，成功创建。
 
 ---
 
@@ -221,48 +245,48 @@ buf
 /*自定义消息缓冲区*/
 struct message
 {
-long msg_type;
-char msg_text[BUFFER_SIZE];
+	long msg_type;
+	char msg_text[BUFFER_SIZE];
 };
 int main()
 {
-int qid;
-key_t key;
-struct message msg;
-/*根据不同的路径和关键字产生标准的key*/
-if ((key = ftok("/", 'a')) == -1)
-{
-perror("ftok");
-exit(1);
-}
-/*创建消息队列*/
-if ((qid = msgget(key, IPC_CREAT|0666)) == -1)
-{
-perror("msgget");
-exit(1);
-}
-printf("Open queue %d\n",qid);
-while(1)
-{
-printf("Enter some message to the queue:");
-if ((fgets(msg.msg_text, BUFFER_SIZE, stdin)) == NULL)
-{
-printf("no message");
-exit(1);
-}
-msg.msg_type = getpid();
-/*添加消息到消息队列*/
-if ((msgsnd(qid, &msg, strlen(msg.msg_text), 0)) < 0)
-{
-perror("message posted");
-exit(1);
-}
-if (strncmp(msg.msg_text, "quit", 4) == 0)
-{
-break;
-}
-}
-exit(0);
+	int qid;
+	key_t key;
+	struct message msg;
+	/*根据不同的路径和关键字产生标准的key*/
+	if ((key = ftok("/", 'a')) == -1)
+	{
+		perror("ftok");
+		exit(1);
+	}
+	/*创建消息队列*/
+	if ((qid = msgget(key, IPC_CREAT|0666)) == -1)
+	{
+		perror("msgget");
+		exit(1);
+	}
+	printf("Open queue %d\n",qid);
+	while(1)
+	{
+		printf("Enter some message to the queue:");
+		if ((fgets(msg.msg_text, BUFFER_SIZE, stdin)) == NULL)
+		{
+			printf("no message");
+			exit(1);
+		}
+		msg.msg_type = getpid();
+		/*添加消息到消息队列*/
+		if ((msgsnd(qid, &msg, strlen(msg.msg_text), 0)) < 0)
+		{
+			perror("message posted");
+			exit(1);
+		}
+		if (strncmp(msg.msg_text, "quit", 4) == 0)
+		{
+			break;
+		}
+	}
+	exit(0);
 }
 ```
 
@@ -280,45 +304,204 @@ exit(0);
 #define BUFFER_SIZE 512
 struct message
 {
-long msg_type;
-char msg_text[BUFFER_SIZE];
+	long msg_type;
+	char msg_text[BUFFER_SIZE];
 };
 int main()
 {
-int qid;
-key_t key;
-struct message msg;
-/*根据不同的路径和关键字产生标准的key*/
-if ((key = ftok("/", 'a')) == -1)
-{
-perror("ftok");
-exit(1);
+	int qid;
+	key_t key;
+	struct message msg;
+	/*根据不同的路径和关键字产生标准的key*/
+	if ((key = ftok("/", 'a')) == -1)
+	{
+		perror("ftok");
+		exit(1);
+	}
+	/*获取消息队列*/
+	if ((qid = msgget(key, 0666)) == -1)
+	{
+		perror("msgget");
+		exit(1);
+	}
+	printf("Open queue %d\n", qid);
+	do
+	{
+	/*读取消息队列*/
+	memset(msg.msg_text, 0, BUFFER_SIZE);
+	if (msgrcv(qid, &msg, BUFFER_SIZE, 0, 0) < 0)
+	{
+		perror("msgrcv");
+		exit(1);
+	}
+	printf("The message from process %d : %s", msg.msg_type, msg.msg_text);
+	} while(strncmp(msg.msg_text, "quit", 4));
+	/*从系统内核中移走消息队列 */
+	if ((msgctl(qid, IPC_RMID, NULL)) < 0)
+	{
+		perror("msgctl");
+		exit(1);
+	}
+	exit(0);
 }
-/*获取消息队列*/
-if ((qid = msgget(key, 0666)) == -1)
+```
+
+### removeMessageQuene.c
+
+> 用来删除已经创建的消息队列
+
+```c
+/* msgrcv.c */
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#define MESSAGE_BUFF_SIZE 512
+struct msgbuf
 {
-perror("msgget");
-exit(1);
+long mtype; /* 消息类型，必须大于0 */
+char mtext[MESSAGE_BUFF_SIZE]; /* 消息正文 */
+};
+int main(void)
+{
+	int key,mqid;
+	struct msgbuf mb;
+	if((key = ftok("/",'a'))<0)
+	{
+		perror("ftok error!");
+		exit(1);
+	}
+	//1.get message quene id
+	if((mqid = msgget(key,0666))<0)
+	{
+		perror("1.Get message quene fail!!!");
+		exit(1);
+	}
+	//2.remove message quene id from kernel
+	if ((msgctl(mqid, IPC_RMID, NULL)) < 0)
+	{
+	perror("2.Remove message quene id error!!!");
+	exit(1);
+	}
+	return 0;
 }
-printf("Open queue %d\n", qid);
-do
+```
+
+> mycode
+
+### message.c
+
+```c
+/*send message to message quene's such as sender */
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#define MESSAGE_BUFF_SIZE 512
+struct msgbuf
 {
-/*读取消息队列*/
-memset(msg.msg_text, 0, BUFFER_SIZE);
-if (msgrcv(qid, &msg, BUFFER_SIZE, 0, 0) < 0)
+long mtype; /* 消息类型，必须大于0 */
+char mtext[MESSAGE_BUFF_SIZE]; /* 消息正文 */
+};
+int main(void)
 {
-perror("msgrcv");
-exit(1);
+	int key,mqid;
+	struct msgbuf mb;
+	char *buf="I am message quene\n";
+	//create message quene key
+	if((key = ftok("/",'a'))<0)
+	{
+		perror("ftok error!");
+		exit(1);
+	}
+	//create message quene
+	if((mqid = msgget(key,IPC_CREAT|0666))<0)
+	{
+		perror("message quene create fail!!!");
+		exit(1);
+	}
+	//init message quene buff
+	mb.mtype=getpid();
+	//input data to message quene struct's buff
+	while(1)
+	{
+		printf("input some data to message quene buff:\n");
+		if(fgets(mb.mtext,MESSAGE_BUFF_SIZE,stdin)==NULL)
+		{
+			printf("No message from stdin!\n");
+			exit(1);
+		}
+		//send message
+		if(msgsnd(mqid,&mb,strlen(mb.mtext),0)<0)
+		{
+			perror("message send error!");
+			exit(1);
+		}
+		//exit while before send "quit"
+		if (strncmp(mb.mtext, "quit", 4) == 0)
+		{
+		break;
+		}
+	}
+	exit(0);
 }
-printf("The message from process %d : %s", msg.msg_type, msg.msg_text);
-} while(strncmp(msg.msg_text, "quit", 4));
-/*从系统内核中移走消息队列 */
-if ((msgctl(qid, IPC_RMID, NULL)) < 0)
+```
+
+### reMessage.c
+
+```c
+/* receive message from message quene */
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#define MESSAGE_BUFF_SIZE 512
+struct msgbuf
 {
-perror("msgctl");
-exit(1);
-}
-exit(0);
+long mtype; /* 消息类型，必须大于0 */
+char mtext[MESSAGE_BUFF_SIZE]; /* 消息正文 */
+};
+int main(void)
+{
+	int key,mqid;
+	struct msgbuf mb;
+	if((key = ftok("/",'a'))<0)
+	{
+		perror("ftok error!");
+		exit(1);
+	}
+	//1.get message quene id
+	if((mqid = msgget(key,0666))<0)
+	{
+		perror("message quene create fail!!!");
+		exit(1);
+	}
+	//2.message receive
+	do
+	{
+		//receive message from message quene
+		if(msgrcv(mqid,&mb,MESSAGE_BUFF_SIZE,0,0)<0)
+		{
+			perror("message receive error!");
+		}
+		printf("Data from message quene:%s",mb.mtext);
+	}while(strncmp(mb.mtext, "quit", 4)!=0);
+	//3.remove message quene id from kernel
+	if ((msgctl(mqid, IPC_RMID, NULL)) < 0)
+	{
+	perror("remove message quene id error");
+	exit(1);
+	}
+	return 0;
 }
 ```
 
