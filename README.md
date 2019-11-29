@@ -33,7 +33,7 @@
 - 10 linux进程间通信(消息队列)
 - 10 code 消息队列编程
 - 11 linux多线程编程
-- 11 code 
+- 11 code pthread_*，sem_init()，sem_wait()
 
 ## 环境说明
 
