@@ -13,27 +13,40 @@
   - 强制记录锁（由kernel加）
   - 结尾 -- errno代码 中文版
 - 02 实验--待完成(2019/10/24日更新)
+- 02 实验
 - 03 IO多路复用&IO多路复用5种模型&IO系统概述&IO通道图解&DMA和中断&IO多路复用使用场景&inode和有名管道
 - 03 code -- 2019/10/24日更新
   - select()函数
   - 宏定义的意思
   - poll()函数
+- 03 实验
 - 04 linux进程控制(第二大部分)&PCB&linux进程管理&前后台进程手工管理&调度启动
 - 04 code linux进程控制编程&fork()&vfork()&exec函数族&exit和_exit函数&wait和waitpid函数
+- 04 实验
 - 05 linux进程控制2&守护进程(Daemon)&终端&编写守护进程
   - 因为内容比较少，因此这一讲不出code，code包含在这里面
+- 05 实验
 - 06 linux进程间通信（管道）&  进程之间通信的几种方式
   - 同样内容比较少，因此这一讲不出code，code包含在这里面
+- 06 实验
 - 07 linux进程间通信(信号)
 -  07 code kill()&raise()&alarm()&pause()&信号的处理&signal()&sigaction()&信号集函数&sigprocmask()&sigpending()
+-  07 实验
 - 08 linux进程间通信(信号量)&PV操作&二维信号量
 - 08 code 信号量编程&semget()&ftok()&IPCS命令&semctl()&semop()
+- 08 实验
 - 09 linux进程间通信(共享内存)
 - 09 code 共享内存编程&sheget()&shmat()&shmdt()&shmcl()&strncmp()&strcpy()&strncpy()
+- 09 实验
 - 10 linux进程间通信(消息队列)
 - 10 code 消息队列编程
+- 10 实验  消息队列半双工聊天程序
 - 11 linux多线程编程
+- 11 实验
 - 11 code pthread_*，sem_init()，sem_wait()
+- 12 linux 网络编程 
+- 12 code socket
+- 12 实验
 
 ## 环境说明
 
@@ -88,6 +101,9 @@ yum install gcc-c++ -y
 - 2019/11/30日更新
   - 近期说明，最近一周已经讲到多线程编程，关于多线程的编程有一个获取线程的是需要特别注意的。它的参数有点儿奇怪。code中会尽量讲清楚它的意思，不会太详细。因为学的时候并没有深入理解那个参数，而是会用就行了。
   - mycode是我自己简化版的，符合我习惯的模板代码，方便我进行二次开发。
+- 2019/12/3 日更新
+  - 今天是最后一节新课内容，至此，嵌入式所有内容完成。
+  - 我所学的嵌入式是嵌入式Linux开发。开发环境是虚拟机+gcc。我想试一下win10子系统。
 
 
 
